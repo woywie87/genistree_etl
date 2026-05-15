@@ -1,20 +1,20 @@
 {{ config(materialized='table') }}
 
-with graves as (
+with genistree_documents as (
     select
-        _uid        as grave_uid,
+        _uid        as genistree_uid,
         Address       as address,
         GeoLat      as geo_lat,
         GeoLon      as geo_lon,
         Persons     as persons_json
-    from {{ source('RAW', 'GRAVES') }}
+    from {{ source('RAW', 'GENISTREE_OBJECTS') }}
     where Persons is not null
       and Persons != '[]'
 ),
 
 unpacked as (
     select
-        grave_uid,
+        genistree_uid,
         address,
         geo_lat,
         geo_lon,
@@ -25,12 +25,12 @@ unpacked as (
         JSON_EXTRACT_SCALAR(person, '$.DeathYear')  as death_year_raw,
         JSON_EXTRACT_SCALAR(person, '$.Age')        as age_raw,
         JSON_EXTRACT_SCALAR(person, '$.AddInfo')    as add_info
-    from graves,
+    from genistree_documents,
     UNNEST(JSON_EXTRACT_ARRAY(persons_json)) as person
 )
 
 select
-    grave_uid,
+    genistree_uid,
     address,
     SAFE_CAST(geo_lat AS FLOAT64)                           as geo_lat,
     SAFE_CAST(geo_lon AS FLOAT64)                           as geo_lon,

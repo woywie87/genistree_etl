@@ -4,6 +4,7 @@ from airflow.hooks.base import BaseHook
 from airflow.providers.ssh.hooks.ssh import SSHHook
 from airflow.providers.google.cloud.hooks.bigquery import BigQueryHook
 from airflow.operators.python import PythonOperator
+from google.api_core.exceptions import NotFound
 from google.cloud.bigquery import LoadJobConfig, WriteDisposition
 from sqlalchemy import create_engine, text
 from datetime import datetime
@@ -36,14 +37,14 @@ CAST_TO_STRING = {
 
 # Kolumny każdej tabeli do MERGE (bez GeoLocalization która jest pomijana)
 COLUMNS = {
-    "GRAVES": [
+    "GENISTREE_OBJECTS": [
         "_id", "_uid", "_createdAt", "_updatedAt", "_permissions",
         "CustomDocumentID", "CreateUserID", "ValidateUserID", "Place",
         "Photos", "Persons", "Address", "Year", "personsTAGS", "yearTAGS",
         "Status", "CustomDocumentTypeID", "AdditionalInfo", "GeoLat", "GeoLon",
         "WebLink", "ThumbnailPhoto", "Signature", "extraTags",
     ],
-    "CENSUS": [
+    "GENISTREE_CENSUS": [
         "_id", "_uid", "_createdAt", "_updatedAt", "_permissions",
         "Place", "WebLink", "CreateUserID", "GeoLat", "GeoLon",
         "Description", "Owner", "Region", "Signature", "FamilyInfo",
@@ -188,6 +189,10 @@ def merge_to_raw(bq_table: str, staging_task_id: str, **context):
     - MATCHED + _updatedAt różny → UPDATE
     - NOT MATCHED BY TARGET → INSERT
     - NOT MATCHED BY SOURCE → DELETE (rekord usunięty w MariaDB)
+
+    Gdy tabela RAW jeszcze nie istnieje, tworzy ją jako kopię STAGING
+    (pierwszy run — jak merge_osm_to_raw w dag_osm_shrines.py).
+
     Pomija MERGE jeśli STAGING jest pusty.
     """
     log = logging.getLogger(__name__)
@@ -201,15 +206,34 @@ def merge_to_raw(bq_table: str, staging_task_id: str, **context):
         log.info(f"Brak nowych danych w STAGING dla {bq_table} — pomijam MERGE.")
         return
 
-    cols        = COLUMNS[bq_table]
-    target      = f"`{BQ_PROJECT}.{BQ_DATASET}.{bq_table}`"
-    staging     = f"`{BQ_PROJECT}.{BQ_DATASET}.{bq_table}_STAGING`"
+    target_fq = f"{BQ_PROJECT}.{BQ_DATASET}.{bq_table}"
+    staging_fq = f"{BQ_PROJECT}.{BQ_DATASET}.{bq_table}_STAGING"
+
+    bq_hook = BigQueryHook(gcp_conn_id=GCP_CONN_ID)
+    client = bq_hook.get_client(project_id=BQ_PROJECT)
+
+    try:
+        client.get_table(target_fq)
+    except NotFound:
+        log.info(
+            f"Tabela {bq_table} nie istnieje — CREATE TABLE AS SELECT z STAGING (pierwszy run)"
+        )
+        client.query(f"""
+            CREATE TABLE `{target_fq}` AS
+            SELECT * FROM `{staging_fq}`
+        """).result()
+        log.info(f"Utworzono RAW.{bq_table} ze STAGING — pomijam MERGE w tym runie.")
+        return
+
+    cols = COLUMNS[bq_table]
+    target = f"`{target_fq}`"
+    staging = f"`{staging_fq}`"
 
     # Buduj listę kolumn do UPDATE (wszystkie oprócz _uid i _createdAt)
     update_cols = [
         c for c in cols if c not in ("_uid", "_createdAt")
     ]
-    update_set  = ",\n        ".join(
+    update_set = ",\n        ".join(
         [f"target.{c} = source.{c}" for c in update_cols]
     )
 
@@ -233,8 +257,6 @@ def merge_to_raw(bq_table: str, staging_task_id: str, **context):
     """
 
     log.info(f"Wykonuję MERGE dla {bq_table}")
-    bq_hook = BigQueryHook(gcp_conn_id=GCP_CONN_ID)
-    client  = bq_hook.get_client(project_id=BQ_PROJECT)
     client.query(merge_sql).result()
     log.info(f"MERGE zakończony dla {bq_table}")
 
@@ -257,53 +279,54 @@ with DAG(
        - zmieniony rekord → UPDATE
        - nowy rekord → INSERT
        - usunięty rekord → DELETE
+       Pierwszy run: brak tabeli RAW → CREATE TABLE … AS SELECT ze STAGING (bez MERGE).
 
     Tabele:
-    - RAW.GRAVES + RAW.GRAVES_STAGING  ← _1_database_1_collection_1
-    - RAW.CENSUS + RAW.CENSUS_STAGING  ← _1_database_1_collection_2
+    - RAW.GENISTREE_OBJECTS + RAW.GENISTREE_OBJECTS_STAGING  ← _1_database_1_collection_1
+    - RAW.GENISTREE_CENSUS + RAW.GENISTREE_CENSUS_STAGING  ← _1_database_1_collection_2
     """
 ) as dag:
 
-    # --- GRAVES ---
-    stage_graves = PythonOperator(
-        task_id="stage_graves",
+    # --- GENISTREE_OBJECTS (dokumenty z aplikacji Genistree) ---
+    stage_genistree_objects = PythonOperator(
+        task_id="stage_genistree_objects",
         python_callable=load_to_staging,
         op_kwargs={
-            "bq_table": "GRAVES",
+            "bq_table": "GENISTREE_OBJECTS",
             "mysql_table": "_1_database_1_collection_1",
             "local_port": 3307,
         },
     )
 
-    merge_graves = PythonOperator(
-        task_id="merge_graves",
+    merge_genistree_objects = PythonOperator(
+        task_id="merge_genistree_objects",
         python_callable=merge_to_raw,
         op_kwargs={
-            "bq_table": "GRAVES",
-            "staging_task_id": "stage_graves",
+            "bq_table": "GENISTREE_OBJECTS",
+            "staging_task_id": "stage_genistree_objects",
         },
     )
 
-    # --- CENSUS ---
-    stage_census = PythonOperator(
-        task_id="stage_census",
+    # --- GENISTREE_CENSUS (spisy rewizyjne) ---
+    stage_genistree_census = PythonOperator(
+        task_id="stage_genistree_census",
         python_callable=load_to_staging,
         op_kwargs={
-            "bq_table": "CENSUS",
+            "bq_table": "GENISTREE_CENSUS",
             "mysql_table": "_1_database_1_collection_2",
             "local_port": 3308,
         },
     )
 
-    merge_census = PythonOperator(
-        task_id="merge_census",
+    merge_genistree_census = PythonOperator(
+        task_id="merge_genistree_census",
         python_callable=merge_to_raw,
         op_kwargs={
-            "bq_table": "CENSUS",
-            "staging_task_id": "stage_census",
+            "bq_table": "GENISTREE_CENSUS",
+            "staging_task_id": "stage_genistree_census",
         },
     )
 
     # Flow: staging równolegle, potem merge równolegle
-    stage_graves >> merge_graves
-    stage_census >> merge_census
+    stage_genistree_objects >> merge_genistree_objects
+    stage_genistree_census >> merge_genistree_census

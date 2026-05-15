@@ -1,0 +1,79 @@
+version: 2
+
+models:
+  - name: stg_osm_objects
+    description: >
+      Widok na RAW.OSM_OBJECTS z bezpiecznym rzutowaniem wspolrzednych;
+      baza pod marts (w tym raporty mapowe OSM).
+    columns:
+      - name: osm_id
+        description: "Identyfikator obiektu OSM."
+      - name: osm_type
+        description: "Typ elementu OSM (np. node)."
+      - name: historic_type
+        description: "Wartosc tagu historic."
+      - name: lat
+        description: "Szerokosc geograficzna."
+      - name: lon
+        description: "Dlugosc geograficzna."
+      - name: name
+        description: "Nazwa z tagu name (jesli jest)."
+      - name: material
+        description: "Material z OSM (jesli jest)."
+      - name: start_date
+        description: "start_date z OSM."
+      - name: description
+        description: "Opis z OSM."
+      - name: voivodeship
+        description: "Klucz wojewodztwa z pipeline ETL (np. malopolskie)."
+      - name: fetched_at
+        description: "Czas pobrania rekordu w pipeline."
+
+  - name: stg_genistree_shrines_crosses
+    description: >
+      Dokumenty z aplikacji Genistree (RAW.GENISTREE_OBJECTS) z CustomDocumentTypeID 1–7
+      (m.in. kapliczki, krzyze wg klasyfikacji); wspolrzedne i pola opisowe pod mart mapowy.
+    columns:
+      - name: genistree_uid
+        description: "Identyfikator rekordu (_uid) w zrodle Genistree."
+      - name: custom_document_type_id
+        description: "CustomDocumentTypeID (1–7)."
+      - name: place
+        description: "Miejsce (Place)."
+      - name: address
+        description: "Adres (Address)."
+      - name: additional_info
+        description: "AdditionalInfo."
+      - name: year_raw
+        description: "Rok / pole Year z zrodla (typ zgodny z RAW)."
+      - name: lat
+        description: "Szerokosc geograficzna (GeoLat)."
+      - name: lon
+        description: "Dlugosc geograficzna (GeoLon)."
+
+  - name: stg_genistree_persons
+    description: >
+      Osoby z pola Persons w dokumentach Genistree (RAW.GENISTREE_OBJECTS), spakietowane z JSON.
+    columns:
+      - name: genistree_uid
+        description: "Identyfikator dokumentu (_uid)."
+      - name: address
+        description: "Adres dokumentu."
+      - name: geo_lat
+        description: "Szerokosc geograficzna dokumentu."
+      - name: geo_lon
+        description: "Dlugosc geograficzna dokumentu."
+      - name: first_name
+        description: "Imie osoby."
+      - name: last_name
+        description: "Nazwisko osoby."
+      - name: maiden_name
+        description: "Nazwisko rodowe."
+      - name: birth_year
+        description: "Rok urodzenia (parsowany)."
+      - name: death_year
+        description: "Rok smierci (parsowany)."
+      - name: age
+        description: "Wiek."
+      - name: add_info
+        description: "Dodatkowe informacje (AddInfo)."

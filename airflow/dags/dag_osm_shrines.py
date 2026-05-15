@@ -325,7 +325,7 @@ def check_new_data(**context):
 
 
 # ---------------------------------------------------------------------------
-# Krok 4a: załaduj partię do STAGING (jak GRAVES_STAGING w bigquery.py)
+# Krok 4a: załaduj partię do STAGING (jak GENISTREE_OBJECTS_STAGING w bigquery.py)
 # ---------------------------------------------------------------------------
 def load_osm_to_staging(**context):
     """
@@ -594,7 +594,7 @@ with DAG(
     doc_md="""
     ## OSM → BigQuery RAW (`OSM_OBJECTS` + STAGING + META)
 
-    Jak `extract_mariadb_to_bigquery_raw` (GRAVES/CENSUS), ale źródłem jest Overpass API:
+    Jak `extract_mariadb_to_bigquery_raw` (GENISTREE_OBJECTS / GENISTREE_CENSUS), ale źródłem jest Overpass API:
 
     1. Odczyt `osm_base_timestamp` z `RAW.OSM_OBJECTS_META` → filtr Overpass `newer`.
     2. Pobranie w bboxach województw (pełny snapshot przy pierwszym runie bez META).

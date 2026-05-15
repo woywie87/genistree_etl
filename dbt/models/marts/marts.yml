@@ -2,7 +2,7 @@ version: 2
 
 models:
   - name: mart_user_record_stats_long
-    description: "Agregacja liczby rekordow per CreateUserID i typ metryki (typ_* oraz spisy_rewizyjne)."
+    description: "Agregacja liczby rekordow per CreateUserID i typ metryki (typ_* z RAW.GENISTREE_OBJECTS oraz spisy_rewizyjne z RAW.GENISTREE_CENSUS)."
     columns:
       - name: create_user_id
         description: "Identyfikator uzytkownika tworzacego rekord."
@@ -17,4 +17,29 @@ models:
       - name: create_user_id
         description: "Identyfikator uzytkownika tworzacego rekord."
       - name: spisy_rewizyjne
-        description: "Liczba rekordow CENSUS przypisanych do CreateUserID."
+        description: "Liczba rekordow GENISTREE_CENSUS przypisanych do CreateUserID."
+
+  - name: mart_map_shrines_crosses_osm_genistree
+    description: >
+      Jedyna tabela mart pod raport mapowy: pinezki OSM (malopolskie, stg_osm_objects)
+      oraz Genistree (CustomDocumentTypeID 1–7, stg_genistree_shrines_crosses), polaczone
+      UNION ALL; logika w CTE w jednym pliku SQL. pin_source = 'osm' | 'genistree'.
+    columns:
+      - name: pin_source
+        description: "'osm' lub 'genistree'."
+      - name: source_record_id
+        description: "Unikalny identyfikator rekordu w danym zrodle (string)."
+      - name: lat
+        description: "Szerokosc geograficzna."
+      - name: lon
+        description: "Dlugosc geograficzna."
+      - name: historic_type
+        description: "Typ OSM (historic) albo typ_* z dokumentu Genistree."
+      - name: start_date
+        description: "Data/rokpozycja opisu (tekst)."
+      - name: description
+        description: "Opis do tooltipu."
+      - name: lat_lon
+        description: "Wspolrzedne jako tekst."
+      - name: tooltip_text
+        description: "Pelny tekst tooltipu."
