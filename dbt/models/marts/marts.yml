@@ -1,0 +1,20 @@
+version: 2
+
+models:
+  - name: mart_user_record_stats_long
+    description: "Agregacja liczby rekordow per CreateUserID i typ metryki (typ_* oraz spisy_rewizyjne)."
+    columns:
+      - name: create_user_id
+        description: "Identyfikator uzytkownika tworzacego rekord."
+      - name: metric_name
+        description: "Nazwa metryki: typ_<CustomDocumentTypeID> lub spisy_rewizyjne."
+      - name: records_count
+        description: "Liczba rekordow dla danego uzytkownika i metryki."
+
+  - name: mart_user_record_stats_wide
+    description: "Pivot metryk do ukladu kolumnowego per CreateUserID (opcja pod bezposredni raport)."
+    columns:
+      - name: create_user_id
+        description: "Identyfikator uzytkownika tworzacego rekord."
+      - name: spisy_rewizyjne
+        description: "Liczba rekordow CENSUS przypisanych do CreateUserID."

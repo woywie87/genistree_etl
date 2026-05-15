@@ -1,0 +1,13 @@
+version: 2
+
+sources:
+  - name: RAW
+    database: genistry-379120
+    schema: RAW
+    tables:
+      - name: GRAVES
+      - name: CENSUS
+      - name: OSM_OBJECTS
+        description: >
+          Obiekty OSM (wayside_cross / wayside_shrine) w RAW; budowane przez
+          Airflow DAG fetch_osm_shrines_to_bigquery (STAGING + MERGE).

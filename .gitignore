@@ -1,0 +1,12 @@
+.env
+
+dbt/target/
+dbt/dbt_packages/
+dbt/logs/
+dbt/dbt_internal_packages/
+dbt/genistree-bigquery.json
+airflow/keys/
+airflow/logs/
+airflow/config/
+airflow/docker-compose.yml
+airflow/raporty/
