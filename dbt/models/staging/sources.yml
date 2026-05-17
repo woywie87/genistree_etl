@@ -8,11 +8,11 @@ sources:
       - name: GENISTREE_OBJECTS
         description: >
           Obiekty dokumentow z aplikacji Genistree (RAW.GENISTREE_OBJECTS);
-          rozne typy dokumentow. Ladowane przez Airflow extract_mariadb_to_bigquery_raw.
+          rozne typy dokumentow. Ladowane przez Airflow dag_genistree.
       - name: GENISTREE_CENSUS
         description: >
-          Spisy rewizyjne (RAW.GENISTREE_CENSUS). Ladowane przez Airflow extract_mariadb_to_bigquery_raw.
+          Spisy rewizyjne (RAW.GENISTREE_CENSUS). Ladowane przez Airflow dag_genistree.
       - name: OSM_OBJECTS
         description: >
           Obiekty OSM (wayside_cross / wayside_shrine) w RAW; budowane przez
-          Airflow DAG fetch_osm_shrines_to_bigquery (STAGING + MERGE).
+          Airflow DAG dag_osm_shrines (STAGING + MERGE).

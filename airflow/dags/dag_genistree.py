@@ -262,13 +262,13 @@ def merge_to_raw(bq_table: str, staging_task_id: str, **context):
 
 
 with DAG(
-    dag_id="extract_mariadb_to_bigquery_raw",
+    dag_id="dag_genistree",
     start_date=datetime(2024, 1, 1),
     schedule="0 2 * * *",
     catchup=False,
-    tags=["genealogy", "raw", "bigquery"],
+    tags=["genealogy", "genistree", "raw"],
     doc_md="""
-    ## Extract MariaDB → BigQuery RAW (STAGING + MERGE)
+    ## Genistree: MariaDB → BigQuery RAW (STAGING + MERGE)
 
     Incremental load z MariaDB do BigQuery przez warstwę STAGING.
 

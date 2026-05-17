@@ -10,4 +10,4 @@ select
     safe_cast(GeoLat as float64) as lat,
     safe_cast(GeoLon as float64) as lon
 from {{ source('RAW', 'GENISTREE_OBJECTS') }}
-where safe_cast(CustomDocumentTypeID as int64) between 1 and 7
+where safe_cast(CustomDocumentTypeID as int64) between 1 and 5
