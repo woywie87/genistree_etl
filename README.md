@@ -10,7 +10,7 @@ Repozytorium **ETL** dla projektu **Genistree** — potoku danych od aplikacji i
 W BigQuery (dataset **MARTS**) są trzy tabele pod typowe pytania biznesowe:
 
 - **Aktywność i udział typów treści** — ilość rekordów zarejestrowanych w Genistree per user pogrupowane wg typu (pivot): **`mart_user_record_stats_long`**.
-- **Mapa obiektów architektury sakralnej** — jedna warstwa mapy łączy wyłącznie obiekty (np. kapliczki, krzyże przydrożne) z **Genistree** i z **OpenStreetMap**, żeby widzieć **luki po stronie Genistree** (co jest w OSM, a nie ma u nas) oraz **luki po stronie OpenStreetMap** (co użytkownicy zapisali w Genistree, a nie występuje w OSM) i planować uzupełnianie którejkolwiek bazy: **`mart_map_shrines_crosses_osm_genistree`**.
+- **Mapa obiektów architektury sakralnej** — jedna warstwa mapy łączy obiekty (np. kapliczki, krzyże przydrożne) z **Genistree** i z **OpenStreetMap**, żeby widzieć **braki po stronie Genistree** (co jest w OSM, a nie ma u nas) oraz **braki po stronie OpenStreetMap**  i planować uzupełnianie którejkolwiek bazy: **`mart_map_shrines_crosses_osm_genistree`**.
 - **Demografia zgonów w czasie** — jak w kolejnych dekadach rozkłada się liczba osób z podanym wiekiem, w podziale na grupy wiekowe (dzieci, dorośli, seniorzy): **`mart_person_death_timeline_counts`**.
 
 ## Cel
