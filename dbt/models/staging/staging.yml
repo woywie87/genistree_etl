@@ -74,6 +74,12 @@ models:
       - name: death_year
         description: "Rok smierci (parsowany)."
       - name: age
-        description: "Wiek."
+        description: "Wiek z pola Age w Persons (jesli podany)."
+      - name: age_calculated
+        description: >
+          Wiek z roznicy lat smierci i urodzenia (death_year - birth_year), tylko gdy
+          oba lata sa znane, death_year >= birth_year i roznica <= 130 (odciecie bledow).
+      - name: age_effective
+        description: "coalesce(age, age_calculated) — do wyswietlania, gdy brak wieku wprost."
       - name: add_info
         description: "Dodatkowe informacje (AddInfo)."

@@ -1,0 +1,18 @@
+version: 2
+
+models:
+  - name: int_genistree_person_death_decade_century
+    description: >
+      Osoby z dokumentow Genistree z rokiem smierci (1000–2100): dekada jako rok
+      poczatkowy (1940) oraz rok konczacy wiek gregorianski (np. 2000 dla 1901–2000).
+    columns:
+      - name: genistree_uid
+        description: "Identyfikator dokumentu (_uid)."
+      - name: death_year
+        description: "Rok smierci z Persons."
+      - name: age_effective
+        description: "Jak w stg_genistree_persons: wiek wprost lub z lat urodzenia i smierci."
+      - name: death_decade_year
+        description: "Rok poczatkowy dekady smierci, np. 1940."
+      - name: death_century_end_year
+        description: "Ostatni rok wieku gregorianskiego, np. 2000 (smierc w latach 1901–2000)."

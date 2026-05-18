@@ -43,3 +43,20 @@ models:
         description: "Wspolrzedne jako tekst."
       - name: tooltip_text
         description: "Pelny tekst tooltipu."
+
+  - name: mart_person_death_timeline_counts
+    description: >
+      Raport timeline po dekadach smierci oraz przedzialach wieku (age_effective):
+      dzieci 0–17, dorośli 18–44 i 45–64, seniorzy 65+. Rekordy bez wieku lub z wiekiem
+      poza 0–130 sa pomijane. Zrodlo: int_genistree_person_death_decade_century.
+    columns:
+      - name: decade_year
+        description: "Pierwszy rok dekady smierci (np. 1940)."
+      - name: age_bucket_code
+        description: "Kod przedzialu: 0-17, 18-44, 45-64, 65_plus."
+      - name: age_bucket_label
+        description: "Etykieta po polsku pod legende wykresu."
+      - name: age_bucket_sort
+        description: "Kolejnosc przedzialow na osi/stacku (1–4, rosnaco wiek)."
+      - name: persons_count
+        description: "Liczba wystapien osob w danej dekadzie i przedziale wieku."
