@@ -2,7 +2,7 @@
 
 Repozytorium **ETL** dla projektu **Genistree** — potoku danych od aplikacji i zewnętrznych źródeł do analityki na **Google BigQuery**.
 
-- **Airflow** — DAG-i orkiestrujące zasilanie warstwy **RAW** w BigQuery: m.in. inkrementalny odczyt z **MariaDB** (Appwrite) przez tunel SSH dla kolekcji Genistree (`dag_genistree`) oraz pobieranie i scalanie obiektów **OpenStreetMap** związanych z kapliczkami i krzyżami przydrożnymi (`dag_osm_shrines`).
+- **Airflow** — DAG-i orkiestrujące zasilanie warstwy **RAW** w BigQuery: m.in. inkrementalny odczyt z **MariaDB** (Appwrite) przez tunel SSH dla kolekcji Genistree (`dag_genistree`) oraz pobieranie i scalanie obiektów **OpenStreetMap** związanych z kapliczkami i krzyżami przydrożnymi (`dag_osm_shrines`) - raport z podsumowaniem importu wysyłany mailowo
 - **dbt** — modele **staging** i **marts** nad datasetem RAW: czyszczenie, typowanie i zestawienia (np. mapy, statystyki), spójne z konwencją źródeł zdefiniowanych w `sources.yml`.
 
 ## Raporty (marts)
