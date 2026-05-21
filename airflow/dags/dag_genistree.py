@@ -191,7 +191,7 @@ def merge_to_raw(bq_table: str, staging_task_id: str, **context):
     - NOT MATCHED BY SOURCE → DELETE (rekord usunięty w MariaDB)
 
     Gdy tabela RAW jeszcze nie istnieje, tworzy ją jako kopię STAGING
-    (pierwszy run — jak merge_osm_to_raw w dag_osm_shrines.py).
+    (pierwszy run — jak merge_osm_to_raw w dag_osm_shrines_import).
 
     Pomija MERGE jeśli STAGING jest pusty.
     """
@@ -262,7 +262,7 @@ def merge_to_raw(bq_table: str, staging_task_id: str, **context):
 
 
 with DAG(
-    dag_id="dag_genistree",
+    dag_id="dag_genistree_import",
     start_date=datetime(2024, 1, 1),
     schedule="0 2 * * *",
     catchup=False,

@@ -22,7 +22,7 @@ models:
   - name: mart_map_shrines_crosses_osm_genistree
     description: >
       Jedyna tabela mart pod raport mapowy: pinezki OSM (malopolskie, stg_osm_objects)
-      oraz Genistree (CustomDocumentTypeID 1–7, stg_genistree_shrines_crosses), polaczone
+      oraz Genistree (CustomDocumentTypeID 1–5, stg_genistree_shrines_crosses), polaczone
       UNION ALL; logika w CTE w jednym pliku SQL. pin_source = 'osm' | 'genistree'.
     columns:
       - name: pin_source
@@ -43,6 +43,54 @@ models:
         description: "Wspolrzedne jako tekst."
       - name: tooltip_text
         description: "Pelny tekst tooltipu."
+
+  - name: mart_genistree_shrines_crosses_duplicate_candidates
+    description: >
+      Kandydaci na potencjalne duble wsrod obiektow Genistree typu kapliczki/krzyze
+      (CustomDocumentTypeID 1–5), wyznaczeni jako pary rekordow tego samego typu
+      oddalone od siebie maksymalnie o 50 metrow. Model bazuje wylacznie na
+      wspolrzednych i nie zawiera dopasowania tekstowego.
+    columns:
+      - name: genistree_uid_a
+        description: "Identyfikator pierwszego rekordu Genistree w parze."
+      - name: genistree_uid_b
+        description: "Identyfikator drugiego rekordu Genistree w parze."
+      - name: custom_document_type_id_a
+        description: "CustomDocumentTypeID pierwszego rekordu."
+      - name: custom_document_type_id_b
+        description: "CustomDocumentTypeID drugiego rekordu."
+      - name: object_type_a
+        description: "Typ pierwszego rekordu jako typ_<CustomDocumentTypeID>."
+      - name: object_type_b
+        description: "Typ drugiego rekordu jako typ_<CustomDocumentTypeID>."
+      - name: place_a
+        description: "Miejsce pierwszego rekordu."
+      - name: place_b
+        description: "Miejsce drugiego rekordu."
+      - name: address_a
+        description: "Adres pierwszego rekordu."
+      - name: address_b
+        description: "Adres drugiego rekordu."
+      - name: additional_info_a
+        description: "AdditionalInfo pierwszego rekordu."
+      - name: additional_info_b
+        description: "AdditionalInfo drugiego rekordu."
+      - name: year_a
+        description: "Rok / pole Year pierwszego rekordu jako tekst."
+      - name: year_b
+        description: "Rok / pole Year drugiego rekordu jako tekst."
+      - name: lat_a
+        description: "Szerokosc geograficzna pierwszego rekordu."
+      - name: lon_a
+        description: "Dlugosc geograficzna pierwszego rekordu."
+      - name: lat_b
+        description: "Szerokosc geograficzna drugiego rekordu."
+      - name: lon_b
+        description: "Dlugosc geograficzna drugiego rekordu."
+      - name: distance_m
+        description: "Odleglosc pomiedzy rekordami w metrach, zaokraglona do 2 miejsc."
+      - name: distance_bucket
+        description: "Przedzial odleglosci: 0-5m, 5-10m, 10-25m albo 25-50m."
 
   - name: mart_person_death_timeline_counts
     description: >

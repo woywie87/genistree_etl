@@ -93,7 +93,7 @@ OVERPASS_RETRY_SLEEP_S = max(5, int(os.getenv("OVERPASS_RETRY_SLEEP_S", "20")))
 OVERPASS_HEADERS = {
     "User-Agent": (
         "genistree_etl-airflow/1.0 "
-        "(DAG dag_osm_shrines; OSM wayside_cross/shrine to RAW.OSM_OBJECTS via STAGING)"
+        "(DAG dag_osm_shrines_import; OSM wayside_cross/shrine to RAW.OSM_OBJECTS via STAGING)"
     ),
 }
 
@@ -325,7 +325,7 @@ def check_new_data(**context):
 
 
 # ---------------------------------------------------------------------------
-# Krok 4a: załaduj partię do STAGING (jak GENISTREE_OBJECTS_STAGING w dag_genistree.py)
+# Krok 4a: załaduj partię do STAGING (jak GENISTREE_OBJECTS_STAGING w dag_genistree_import)
 # ---------------------------------------------------------------------------
 def load_osm_to_staging(**context):
     """
@@ -364,7 +364,7 @@ def load_osm_to_staging(**context):
 
 
 # ---------------------------------------------------------------------------
-# Krok 4b: MERGE STAGING → OSM_OBJECTS (jak merge_to_raw w dag_genistree.py)
+# Krok 4b: MERGE STAGING → OSM_OBJECTS (jak merge_to_raw w dag_genistree_import)
 # ---------------------------------------------------------------------------
 def merge_osm_to_raw(**context):
     """
@@ -584,7 +584,7 @@ def _send_osm_notify_email(**context) -> None:
 # Definicja DAG-a
 # ============================================================
 with DAG(
-    dag_id="dag_osm_shrines",
+    dag_id="dag_osm_shrines_import",
     start_date=datetime(2024, 1, 1),
     # Uruchamiany codziennie o 3:00 UTC (zamiast co tydzień),
     # co pozwala na naprawdę inkrementalne śledzenie zmian w OSM.
@@ -594,7 +594,7 @@ with DAG(
     doc_md="""
     ## OSM → BigQuery RAW (`OSM_OBJECTS` + STAGING + META)
 
-    Jak `dag_genistree` (GENISTREE_OBJECTS / GENISTREE_CENSUS), ale źródłem jest Overpass API:
+    Jak `dag_genistree_import` (GENISTREE_OBJECTS / GENISTREE_CENSUS), ale źródłem jest Overpass API:
 
     1. Odczyt `osm_base_timestamp` z `RAW.OSM_OBJECTS_META` → filtr Overpass `newer`.
     2. Pobranie w bboxach województw (pełny snapshot przy pierwszym runie bez META).

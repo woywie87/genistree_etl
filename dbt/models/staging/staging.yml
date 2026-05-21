@@ -31,13 +31,13 @@ models:
 
   - name: stg_genistree_shrines_crosses
     description: >
-      Dokumenty z aplikacji Genistree (RAW.GENISTREE_OBJECTS) z CustomDocumentTypeID 1–7
+      Dokumenty z aplikacji Genistree (RAW.GENISTREE_OBJECTS) z CustomDocumentTypeID 1–5
       (m.in. kapliczki, krzyze wg klasyfikacji); wspolrzedne i pola opisowe pod mart mapowy.
     columns:
       - name: genistree_uid
         description: "Identyfikator rekordu (_uid) w zrodle Genistree."
       - name: custom_document_type_id
-        description: "CustomDocumentTypeID (1–7)."
+        description: "CustomDocumentTypeID (1–5)."
       - name: place
         description: "Miejsce (Place)."
       - name: address
