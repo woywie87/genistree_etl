@@ -1,5 +1,4 @@
 from airflow import DAG
-from airflow.models import Variable
 from airflow.hooks.base import BaseHook
 from airflow.providers.ssh.hooks.ssh import SSHHook
 from airflow.providers.google.cloud.hooks.bigquery import BigQueryHook
@@ -17,20 +16,18 @@ import time
 # ============================================================
 MARIADB_CONN_ID = "mariadb_appwrite"
 SSH_CONN_ID     = "vps_ssh"
-REMOTE_HOST     = Variable.get("REMOTE_HOST")
-REMOTE_PORT     = 3306
 GCP_CONN_ID     = "google_cloud"
 BQ_PROJECT      = "genistry-379120"
 BQ_DATASET      = "RAW"
 # ============================================================
 
 CAST_TO_STRING = {
-    "_1_database_1_collection_1": [
+    "_1_database_1_collection_6": [
         "_permissions", "Photos", "Persons",
         "personsTAGS", "yearTAGS", "AdditionalInfo",
         "WebLink", "ThumbnailPhoto", "extraTags",
     ],
-    "_1_database_1_collection_2": [
+    "_1_database_1_collection_5": [
         "_permissions", "FamilyInfo",
     ],
 }
@@ -122,15 +119,16 @@ def load_to_staging(bq_table: str, mysql_table: str, local_port: int, **context)
     db_conn  = BaseHook.get_connection(MARIADB_CONN_ID)
     ssh_hook = SSHHook(ssh_conn_id=SSH_CONN_ID)
 
+    remote_host = db_conn.host or "127.0.0.1"
+    remote_port = db_conn.port or 3306
+
     # 3. Otwórz tunel SSH i pobierz dane
-    log.info(f"Otwieranie tunelu SSH → {REMOTE_HOST}:{REMOTE_PORT} (local:{local_port})")
+    log.info(f"Otwieranie tunelu SSH → {remote_host}:{remote_port} (local:{local_port})")
     with ssh_hook.get_tunnel(
-        remote_port=REMOTE_PORT,
-        remote_host=REMOTE_HOST,
+        remote_port=remote_port,
+        remote_host=remote_host,
         local_port=local_port,
     ) as tunnel:
-        tunnel.start()
-
         engine = create_engine(
             f"mysql+pymysql://{db_conn.login}:{db_conn.password}"
             f"@127.0.0.1:{local_port}/{db_conn.schema}"
@@ -293,7 +291,7 @@ with DAG(
         python_callable=load_to_staging,
         op_kwargs={
             "bq_table": "GENISTREE_OBJECTS",
-            "mysql_table": "_1_database_1_collection_1",
+            "mysql_table": "_1_database_1_collection_6",
             "local_port": 3307,
         },
     )
@@ -313,7 +311,7 @@ with DAG(
         python_callable=load_to_staging,
         op_kwargs={
             "bq_table": "GENISTREE_CENSUS",
-            "mysql_table": "_1_database_1_collection_2",
+            "mysql_table": "_1_database_1_collection_5",
             "local_port": 3308,
         },
     )
