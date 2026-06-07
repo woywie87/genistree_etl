@@ -19,6 +19,19 @@ SSH_CONN_ID     = "vps_ssh"
 GCP_CONN_ID     = "google_cloud"
 BQ_PROJECT      = "genistry-379120"
 BQ_DATASET      = "RAW"
+
+TABLES = [
+    {
+        "bq_table": "GENISTREE_OBJECTS",
+        "mysql_table": "_1_database_1_collection_6",
+        "local_port": 3307,
+    },
+    {
+        "bq_table": "GENISTREE_CENSUS",
+        "mysql_table": "_1_database_1_collection_5",
+        "local_port": 3308,
+    },
+]
 # ============================================================
 
 CAST_TO_STRING = {
@@ -186,7 +199,8 @@ def merge_to_raw(bq_table: str, staging_task_id: str, **context):
     Wykonuje MERGE z STAGING do RAW używając _uid jako klucza.
     - MATCHED + _updatedAt różny → UPDATE
     - NOT MATCHED BY TARGET → INSERT
-    - NOT MATCHED BY SOURCE → DELETE (rekord usunięty w MariaDB)
+
+    Usunięcia w MariaDB obsługuje osobny DAG `dag_genistree_reconcile_deletes`.
 
     Gdy tabela RAW jeszcze nie istnieje, tworzy ją jako kopię STAGING
     (pierwszy run — jak merge_osm_to_raw w dag_osm_shrines_import).
@@ -259,6 +273,72 @@ def merge_to_raw(bq_table: str, staging_task_id: str, **context):
     log.info(f"MERGE zakończony dla {bq_table}")
 
 
+def reconcile_deletes(bq_table: str, mysql_table: str, local_port: int, **context):
+    """
+    Usuwa z RAW rekordy, których _uid nie ma już w MariaDB.
+    Pobiera pełną listę _uid ze źródła (lekki SELECT) i porównuje z RAW.
+    """
+    log = logging.getLogger(__name__)
+
+    target_fq = f"{BQ_PROJECT}.{BQ_DATASET}.{bq_table}"
+    uids_staging_fq = f"{BQ_PROJECT}.{BQ_DATASET}.{bq_table}_UIDS_STAGING"
+
+    bq_hook = BigQueryHook(gcp_conn_id=GCP_CONN_ID)
+    client = bq_hook.get_client(project_id=BQ_PROJECT)
+
+    try:
+        client.get_table(target_fq)
+    except NotFound:
+        log.info(f"Tabela {bq_table} nie istnieje — pomijam reconciliation deletes.")
+        return
+
+    db_conn = BaseHook.get_connection(MARIADB_CONN_ID)
+    ssh_hook = SSHHook(ssh_conn_id=SSH_CONN_ID)
+    remote_host = db_conn.host or "127.0.0.1"
+    remote_port = db_conn.port or 3306
+
+    log.info(f"Otwieranie tunelu SSH → {remote_host}:{remote_port} (local:{local_port})")
+    with ssh_hook.get_tunnel(
+        remote_port=remote_port,
+        remote_host=remote_host,
+        local_port=local_port,
+    ) as tunnel:
+        engine = create_engine(
+            f"mysql+pymysql://{db_conn.login}:{db_conn.password}"
+            f"@127.0.0.1:{local_port}/{db_conn.schema}"
+        )
+        _wait_for_connection(engine)
+        try:
+            log.info(f"Pobieranie listy _uid z: {mysql_table}")
+            df = pd.read_sql(f"SELECT _uid FROM `{mysql_table}`", engine)
+            log.info(f"Pobrano {len(df)} _uid")
+        finally:
+            engine.dispose()
+
+    job_config = LoadJobConfig(
+        write_disposition=WriteDisposition.WRITE_TRUNCATE,
+        autodetect=True,
+    )
+    client.load_table_from_dataframe(df, uids_staging_fq, job_config=job_config).result()
+    log.info(f"UIDS_STAGING gotowy: {uids_staging_fq}")
+
+    delete_sql = f"""
+        DELETE FROM `{target_fq}` AS target
+        WHERE NOT EXISTS (
+            SELECT 1
+            FROM `{uids_staging_fq}` AS source
+            WHERE source._uid = target._uid
+        )
+    """
+    job = client.query(delete_sql)
+    job.result()
+    deleted = job.num_dml_affected_rows
+    log.info(f"Reconciliation deletes zakończony dla {bq_table}: usunięto {deleted} rekordów")
+
+
+# ---------------------------------------------------------------------------
+# DAG 1: inkrementalny import MariaDB → BigQuery RAW
+# ---------------------------------------------------------------------------
 with DAG(
     dag_id="dag_genistree_import",
     start_date=datetime(2024, 1, 1),
@@ -273,58 +353,72 @@ with DAG(
     Flow:
     1. Pobierz MAX(_updatedAt) z RAW
     2. Załaduj nowe/zmienione rekordy do STAGING (WRITE_TRUNCATE)
-    3. MERGE STAGING → RAW po kluczu _uid:
-       - zmieniony rekord → UPDATE
-       - nowy rekord → INSERT
-       - usunięty rekord → DELETE
+    3. MERGE STAGING → RAW po kluczu _uid (UPDATE / INSERT)
        Pierwszy run: brak tabeli RAW → CREATE TABLE … AS SELECT ze STAGING (bez MERGE).
 
+    Usuwanie rekordów skasowanych w MariaDB: DAG `dag_genistree_reconcile_deletes`.
+
     Tabele:
-    - RAW.GENISTREE_OBJECTS + RAW.GENISTREE_OBJECTS_STAGING  ← _1_database_1_collection_1
-    - RAW.GENISTREE_CENSUS + RAW.GENISTREE_CENSUS_STAGING  ← _1_database_1_collection_2
+    - RAW.GENISTREE_OBJECTS + RAW.GENISTREE_OBJECTS_STAGING  ← _1_database_1_collection_6
+    - RAW.GENISTREE_CENSUS + RAW.GENISTREE_CENSUS_STAGING  ← _1_database_1_collection_5
     """
-) as dag:
+) as dag_import:
 
-    # --- GENISTREE_OBJECTS (dokumenty z aplikacji Genistree) ---
-    stage_genistree_objects = PythonOperator(
-        task_id="stage_genistree_objects",
-        python_callable=load_to_staging,
-        op_kwargs={
-            "bq_table": "GENISTREE_OBJECTS",
-            "mysql_table": "_1_database_1_collection_6",
-            "local_port": 3307,
-        },
-    )
+    for table in TABLES:
+        stage = PythonOperator(
+            task_id=f"stage_{table['bq_table'].lower()}",
+            python_callable=load_to_staging,
+            op_kwargs={
+                "bq_table": table["bq_table"],
+                "mysql_table": table["mysql_table"],
+                "local_port": table["local_port"],
+            },
+        )
+        merge = PythonOperator(
+            task_id=f"merge_{table['bq_table'].lower()}",
+            python_callable=merge_to_raw,
+            op_kwargs={
+                "bq_table": table["bq_table"],
+                "staging_task_id": f"stage_{table['bq_table'].lower()}",
+            },
+        )
+        stage >> merge
 
-    merge_genistree_objects = PythonOperator(
-        task_id="merge_genistree_objects",
-        python_callable=merge_to_raw,
-        op_kwargs={
-            "bq_table": "GENISTREE_OBJECTS",
-            "staging_task_id": "stage_genistree_objects",
-        },
-    )
 
-    # --- GENISTREE_CENSUS (spisy rewizyjne) ---
-    stage_genistree_census = PythonOperator(
-        task_id="stage_genistree_census",
-        python_callable=load_to_staging,
-        op_kwargs={
-            "bq_table": "GENISTREE_CENSUS",
-            "mysql_table": "_1_database_1_collection_5",
-            "local_port": 3308,
-        },
-    )
+# ---------------------------------------------------------------------------
+# DAG 2: reconciliation deletes (tygodniowo)
+# ---------------------------------------------------------------------------
+with DAG(
+    dag_id="dag_genistree_reconcile_deletes",
+    start_date=datetime(2024, 1, 1),
+    schedule="0 3 * * 0",
+    catchup=False,
+    tags=["genealogy", "genistree", "raw"],
+    doc_md="""
+    ## Genistree: reconciliation deletes MariaDB → BigQuery RAW
 
-    merge_genistree_census = PythonOperator(
-        task_id="merge_genistree_census",
-        python_callable=merge_to_raw,
-        op_kwargs={
-            "bq_table": "GENISTREE_CENSUS",
-            "staging_task_id": "stage_genistree_census",
-        },
-    )
+    Usuwa z RAW rekordy skasowane w MariaDB (hard delete niewidoczny dla inkrementu).
 
-    # Flow: staging równolegle, potem merge równolegle
-    stage_genistree_objects >> merge_genistree_objects
-    stage_genistree_census >> merge_genistree_census
+    Flow (dla każdej tabeli równolegle):
+    1. Pobierz pełną listę `_uid` z MariaDB
+    2. Załaduj do `{table}_UIDS_STAGING`
+    3. DELETE z RAW wierszy, których `_uid` nie ma w źródle
+
+    Tabele:
+    - RAW.GENISTREE_OBJECTS ← _1_database_1_collection_6
+    - RAW.GENISTREE_CENSUS  ← _1_database_1_collection_5
+
+    Harmonogram: niedziela 03:00 (tygodniowo). Import inkrementalny: `dag_genistree_import`.
+    """
+) as dag_reconcile:
+
+    for table in TABLES:
+        PythonOperator(
+            task_id=f"reconcile_deletes_{table['bq_table'].lower()}",
+            python_callable=reconcile_deletes,
+            op_kwargs={
+                "bq_table": table["bq_table"],
+                "mysql_table": table["mysql_table"],
+                "local_port": table["local_port"],
+            },
+        )
